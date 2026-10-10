@@ -61,12 +61,30 @@ const App = () => {
     const localImageUrl = URL.createObjectURL(file)
     try {
       const res = await fetch(`${API_BASE}/analyse-image`, { method: "POST", body: formData })
-      if (!res.ok) throw new Error("Analysis unavailable")
-      const data: unknown = await res.json()
+      const data: unknown = await res.json().catch(() => null)
+      if (!res.ok) {
+        const detail = typeof data === "object" && data !== null && "detail" in data ? data.detail : null
+        const blocked = typeof detail === "object" && detail !== null && "code" in detail && detail.code === "CONTENT_BLOCKED"
+
+        if (res.status === 422 && blocked) {
+          const message = "message" in detail && typeof detail.message === "string"
+            ? detail.message
+            : "This image cannot be processed as a nature observation."
+          URL.revokeObjectURL(localImageUrl)
+          setSpecimen(null)
+          setScanPersisted(false)
+          setError(message)
+          return
+        }
+
+        throw new Error(`Analysis unavailable (${res.status})`)
+      }
+
       const result = normalizeSpecimen(data as Record<string, unknown>, Date.now())
       setScanPersisted(true)
       setSpecimen(result)
       setPayloads((current) => [result, ...current.filter((item) => item.id !== result.id)])
+      setShowModal(true)
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "unknown network error"
       const result: Specimen = {
@@ -81,7 +99,6 @@ const App = () => {
       setError(`Local scan mode is active (${message}). Start the API to identify and save this observation.`)
     } finally {
       setIsScanning(false)
-      setShowModal(true)
     }
   }
 

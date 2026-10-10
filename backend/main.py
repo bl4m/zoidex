@@ -36,7 +36,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://frontend-ociu.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,12 +56,27 @@ async def analyse(
                 session: Session = Depends(get_session)
             ):
     if image.content_type not in ALLOWED_IMAGE_TYPES:
+        logger.warning("Rejected Upload: Invalid file type")
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
     image_bytes = await image.read(MAX_IMAGE_BYTES + 1)
     if len(image_bytes) > MAX_IMAGE_BYTES:
+        logger.warning("Rejected Upload: Invalid image size")
         raise HTTPException(status_code=413, detail="Image must be smaller than 10 MB.")
     try:
         data = await analyse_image(image_bytes, image.content_type)
+        decision = data.pop("decision")
+        block_reason = data.pop("block_reason")
+
+        if decision == "block":
+            logger.warning("Blocked image",extra={"reason": block_reason})
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "CONTENT_BLOCKED",
+                    "message": "This image cannot be processed as a nature observation.",
+                    "reason": block_reason,
+                },
+            )
 
         file_path = f"{uuid.uuid4()}.{image.content_type.split('/')[-1]}"
         
