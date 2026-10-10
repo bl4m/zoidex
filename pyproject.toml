@@ -1,0 +1,15 @@
+[project]
+name = "zoidex"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastapi[standard]>=0.142.4",
+    "groq>=1.7.0",
+    "psycopg[binary]>=3.3.6",
+    "slowapi>=0.1.10",
+    "sqlmodel>=0.0.48",
+    "supabase>=2.32.0",
+]
