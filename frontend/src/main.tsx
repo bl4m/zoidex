@@ -9,7 +9,7 @@ import { SpecimenResultModal } from "./components/SpecimenResultModal"
 import type { SpecimenResult } from "./components/SpecimenResultModal"
 
 type Specimen = SpecimenResult
-const API_BASE = "/api/v1"
+const API_BASE = `${(import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "")}/api/v1`
 
 const normalizeSpecimen = (item: Record<string, unknown>, index: number): Specimen => ({
   id: String(item.id ?? index),
@@ -63,7 +63,7 @@ const App = () => {
       const res = await fetch(`${API_BASE}/analyse-image`, { method: "POST", body: formData })
       if (!res.ok) throw new Error("Analysis unavailable")
       const data: unknown = await res.json()
-      const result = { ...normalizeSpecimen(data as Record<string, unknown>, Date.now()), image_url: localImageUrl }
+      const result = normalizeSpecimen(data as Record<string, unknown>, Date.now())
       setScanPersisted(true)
       setSpecimen(result)
       setPayloads((current) => [result, ...current.filter((item) => item.id !== result.id)])
