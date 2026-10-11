@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +29,15 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
     yield
 
-app = FastAPI(title="Zoidex API", lifespan=lifespan)
+docs_enabled = os.getenv("ENVIRONMENT", "development").lower() != "production"
+
+app = FastAPI(
+    title="Zoidex API",
+    lifespan=lifespan,
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
+)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -68,7 +77,7 @@ async def analyse(
         block_reason = data.pop("block_reason")
 
         if decision == "block":
-            logger.warning("Blocked image",extra={"reason": block_reason})
+            logger.warning(f"Blocked image : {block_reason}")
             raise HTTPException(
                 status_code=422,
                 detail={
